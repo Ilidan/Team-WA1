@@ -11,18 +11,18 @@ def final_algorithm_with_evaluation(matrix_filepath, expected_results, results_f
                                     should_run_arrowhead, should_run_topdom,
                                     should_dump_metrics, should_dump_coordinates, should_dump_expected_coordinates,
                                     should_dump_images, topdom_normalization_alpha, topdom_sensitivity,
-                                    topdom_window_size, topdom_pval_limit, should_show):
+                                    topdom_window_size, topdom_pval_limit, should_show, R):
     if should_run_topdom:
-        topdom_images_filepath =\
+        topdom_images_filepath = \
             f"{results_filepath}/topdom/{chromosome}.results.images.png" if should_dump_images else None
 
-        topdom_metrics_filepath =\
+        topdom_metrics_filepath = \
             f"{results_filepath}/topdom/{chromosome}.results.metrics.txt" if should_dump_metrics else None
 
-        topdom_found_filepath =\
+        topdom_found_filepath = \
             f"{results_filepath}/topdom/{chromosome}.results.found.txt" if should_dump_coordinates else None
 
-        topdom_expected_filepath =\
+        topdom_expected_filepath = \
             f"{results_filepath}/topdom/{chromosome}.results.expected.txt" if should_dump_expected_coordinates else None
 
         imported_and_adjusted_matrix_topdom, results_topdom = tpd.run(
@@ -39,18 +39,19 @@ def final_algorithm_with_evaluation(matrix_filepath, expected_results, results_f
                          metrics_filepath=topdom_metrics_filepath,
                          images_filepath=topdom_images_filepath,
                          found_filepath=topdom_found_filepath,
-                         expected_filepath=topdom_expected_filepath)
+                         expected_filepath=topdom_expected_filepath,
+                         R=R)
     if should_run_arrowhead:
-        arrowhead_images_filepath =\
+        arrowhead_images_filepath = \
             f"{results_filepath}/arrowhead/{chromosome}.results.images.png" if should_dump_images else None
 
         arrowhead_metrics_filepath = \
             f"{results_filepath}/arrowhead/{chromosome}.results.metrics.txt" if should_dump_metrics else None
 
-        arrowhead_found_filepath =\
+        arrowhead_found_filepath = \
             f"{results_filepath}/arrowhead/{chromosome}.results.found.txt" if should_dump_coordinates else None
 
-        arrowhead_expected_filepath =\
+        arrowhead_expected_filepath = \
             f"{results_filepath}/arrowhead/{chromosome}.results.expected.txt" if should_dump_expected_coordinates else None
 
         imported_and_adjusted_matrix_arrowhead, results_arrowhead = awhd.run(matrix_filepath)
@@ -61,7 +62,8 @@ def final_algorithm_with_evaluation(matrix_filepath, expected_results, results_f
                          metrics_filepath=arrowhead_metrics_filepath,
                          images_filepath=arrowhead_images_filepath,
                          found_filepath=arrowhead_found_filepath,
-                         expected_filepath=arrowhead_expected_filepath)
+                         expected_filepath=arrowhead_expected_filepath,
+                         R=R)
 
 
 def init_parser(parser):
@@ -92,6 +94,9 @@ def init_parser(parser):
     parser.add_argument('--topdom-normalization-alpha', type=float, default=None,
                         help="Alpha used for normalization, no normalization if not provided")
 
+    parser.add_argument('--resolution', type=str, default="25k",
+                        help="Resolution of data - 25k or 100k")
+
     parser.add_argument('--topdom-sensitivity', type=float, default=0.04,
                         help="Sensitivity used in TopDom")
 
@@ -104,19 +109,33 @@ def init_parser(parser):
     parser.add_argument('--should-show', type=bool, default=False,
                         help="Should show each results, omitting means False")
 
+    parser.add_argument('--provided-arrowhead-results-path',
+                        type=str,
+                        default='../data/www.lcqb.upmc.fr/meetu/dataforstudent/TAD/GSE63525_GM12878_primary+replicate_Arrowhead_domainlist.txt',
+                        help="Relative or absolute path to provided arrowhead results.")
+
+    parser.add_argument('--data-path', type=str,
+                        default='../data/www.lcqb.upmc.fr/meetu/dataforstudent/HiC/GM12878/25kb_resolution_intrachromosomal',
+                        help="Relative or absolute path to HiC data.")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Team WA1 - TAD Sniffer')
     init_parser(parser)
     args = parser.parse_args()
     chosen_chromosomes_to_processing = args.chromosomes.split(sep=",")
-    R = 100000
-    data_path = '../data/www.lcqb.upmc.fr/meetu/dataforstudent/HiC/GM12878/25kb_resolution_intrachromosomal'
+
+    if not args.resolution:
+        R = 100000
+    elif args.resolution in ["100k", "25k"]:
+        R = int(args.resolution[:-1]) * 1000
+    else:
+        print("Allowed resolutions: 25k, 100k. Correct and try again.")
+        exit()
+
+    data_path = args.data_path
     chromosomes = {}
-    with open(
-            '../data/www.lcqb.upmc.fr/meetu/dataforstudent/TAD/GSE63525_GM12878_primary'
-            '+replicate_Arrowhead_domainlist.txt',
-            'r') as results_file:
+    with open(args.provided_arrowhead_results_path, 'r') as results_file:
         next(results_file)
         for line in results_file:
             str = line.split('\t', 3)
@@ -139,4 +158,5 @@ if __name__ == "__main__":
                                                 topdom_sensitivity=args.topdom_sensitivity,
                                                 topdom_window_size=args.topdom_window_size,
                                                 topdom_pval_limit=args.topdom_pval_limit,
-                                                should_show=args.should_show)
+                                                should_show=args.should_show,
+                                                R=R)
